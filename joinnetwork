@@ -99,8 +99,13 @@ HOSTNAME=`echo $HOSTNAME | sed 's/ /-/g' | awk '{print tolower($0)}'`
 [[ ! $NETWORKID == all && ! $(echo $NETWORKID | awk '{print length}') == 16 ]] && { echo "Syntax Error: Network ID can only be a 16-digit alphenumeric value"; exit 1; }
 # end argument check
 function zt_member_auth {
-        JSON=`curl -s -H "Authorization: Bearer $APIKEY" $APIURL/network/$NETWORKID/member/$MYID | jq -c --arg name "$HOSTNAME" --arg description "$DESCRIPTION" '.config.authorized=true | .name=$name | .description=$description'`
-        curl -s -o /dev/null -H "Authorization: Bearer $APIKEY" -d $JSON $APIURL/network/$NETWORKID/member/$MYID
+        JSON=$( jq  --compact-output \
+                    --raw-output \
+                    --null-input \
+                    --arg name "$HOSTNAME" \
+                    --arg description "$DESCRIPTION" \
+                    '.description=$description | .name=$name | .config.authorized=true')
+        curl -s -X POST -H "Authorization: bearer $APIKEY" $APIURL/network/$NETWORKID/member/$MYID -d $JSON
         #New member - wait for local client to get updated
         echo -ne "waiting for network auth to register"
         while [ -z "$(zerotier-cli listnetworks | grep $NETWORKID | grep OK)" ]; do echo -ne ".";sleep 1 ; done
